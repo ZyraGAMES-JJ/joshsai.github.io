@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Josh's AI</title>
+<title>Josh's AI </title>
 <style>
   body { font-family: sans-serif; background: #f3f6fa; color: #111; margin:0; display:flex; flex-direction:column; height:100vh;}
   #chat { padding: 16px; height: 70vh; overflow-y: auto; border-bottom: 1px solid #ccc; flex-grow:1; }
@@ -26,14 +26,10 @@
 
 <script>
 // ======================================================
-//        JOSH’S AI — With Groq LLaMA 3.1 Support
+//        JOSH’S AI — Smart Offline Version
 // ======================================================
 
-const GROQ_API_KEY = ""; // Add your key if available
-const GROQ_MODEL = "llama3-8b-8192";
-
-// ======================================================
-// PERSONALITY SETTINGS
+// Personality & Settings
 const AI_SETTINGS = {
   name: "Josh's AI",
   personality: "calm, intelligent, friendly deep-voiced male",
@@ -41,13 +37,11 @@ const AI_SETTINGS = {
   historyLimit: 50
 };
 
-// ======================================================
-// MEMORY + CHAT HISTORY
+// Memory + Chat History
 let memory = JSON.parse(localStorage.getItem("ai_memory") || "{}");
-let chatHistory = JSON.parse(localStorage.getItem("ai_chat") || "[]");
+let chatHistory = JSON.parse(localStorage.getItem("ai_chat") || []);
 
-// ======================================================
-// VOICE SYSTEM
+// Voice Setup
 let maleVoice = null;
 function loadVoice() {
   const voices = speechSynthesis.getVoices();
@@ -62,8 +56,7 @@ function speak(text) {
   speechSynthesis.speak(u);
 }
 
-// ======================================================
-// MEMORY HANDLING
+// Save Memory
 function saveMemory() { localStorage.setItem("ai_memory", JSON.stringify(memory)); }
 function updateMemory(userMsg) {
   const m = userMsg.toLowerCase();
@@ -72,65 +65,33 @@ function updateMemory(userMsg) {
 }
 
 // ======================================================
-// SMART OFFLINE AI
-function miniGPT(prompt) {
-  prompt = prompt.toLowerCase();
+// SMART OFFLINE AI — Thinks Like GPT
+function smartOfflineAI(userMsg) {
+  userMsg = userMsg.trim();
+  const lower = userMsg.toLowerCase();
+  
   let response = "";
+  
+  // Memory personalization
   if (memory.username) response += `Hey ${memory.username}, `;
   if (memory.likes && memory.likes.length > 0) response += `I remember you like ${memory.likes.join(", ")}. `;
 
-  if (prompt.includes("why")) return response + "I think the reason is probably connected to some underlying logic or cause.";
-  if (prompt.includes("how")) return response + "Let's break it down step by step so it makes sense.";
-  if (prompt.includes("what")) return response + "Here’s what I know about that topic.";
-  if (prompt.includes("who")) return response + "That depends on the context; could you clarify?";
-  if (prompt.includes("when")) return response + "Timing can vary, but generally it happens under certain conditions.";
-  if (prompt.includes("help") || prompt.includes("problem")) return response + "I’m here to help—let’s tackle it together.";
+  // Check for special commands
+  if (lower.startsWith("/clear")) { localStorage.setItem("ai_chat", JSON.stringify([])); chatHistory = []; return "Chat cleared! Ready to start fresh."; }
+
+  // Context-aware responses using last 5 messages
+  const recent = chatHistory.slice(-5).map(m => m.text).join(" ");
+
+  // Basic reasoning rules
+  if (lower.includes("why")) return response + "Based on what we know, here's why: " + (recent || "It’s a logical explanation.");
+  if (lower.includes("how")) return response + "Let's break it down step by step: " + (recent || "I’ll explain it clearly.");
+  if (lower.includes("what")) return response + "Here’s what I understand: " + (recent || "Let me summarize it.");
+  if (lower.includes("who")) return response + "That depends on context. " + (recent || "Could you clarify who you mean?");
+  if (lower.includes("when")) return response + "Timing varies, but generally: " + (recent || "It happens under certain conditions.");
+  if (lower.includes("help") || lower.includes("problem")) return response + "I’m here to help. " + (recent || "Let's solve it together.");
   
-  return response + "Interesting! Tell me more so I can give a better answer.";
-}
-
-// ======================================================
-// GROQ API CALL
-async function groqAI(userMsg) {
-  if (!GROQ_API_KEY) return null; // skip if no key
-  try {
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${GROQ_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: GROQ_MODEL,
-        messages: buildChatHistory(userMsg),
-        temperature: 0.8
-      })
-    });
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content || null;
-  } catch { return null; }
-}
-
-function buildChatHistory(userMsg) {
-  const messages = chatHistory.slice(-AI_SETTINGS.historyLimit).map(m => ({
-    role: m.role === "you" ? "user" : "assistant",
-    content: m.text
-  }));
-  messages.push({ role: "user", content: userMsg });
-  return messages;
-}
-
-// ======================================================
-// MAIN BRAIN
-async function smartAI(userMsg) {
-  const msg = userMsg.toLowerCase();
-  if (msg.startsWith("/clear")) { localStorage.setItem("ai_chat", JSON.stringify([])); chatHistory = []; return "Chat cleared! Ready to start fresh."; }
-  updateMemory(userMsg);
-
-  const online = await groqAI(userMsg);
-  if (online) return online;
-
-  return miniGPT(msg);
+  // Conversational fallback
+  return response + "Hmm, that's interesting! " + (recent ? "Earlier you mentioned: " + recent : "Tell me more so I can give a better answer.");
 }
 
 // ======================================================
@@ -168,7 +129,8 @@ async function runAI() {
   chat.appendChild(typing);
   chat.scrollTop = chat.scrollHeight;
 
-  const reply = await smartAI(text);
+  updateMemory(text);
+  const reply = smartOfflineAI(text);
 
   typing.remove();
   addMessage(reply, "ai");
