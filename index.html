@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Josh's Ai</title>
+<title>Josh's AI</title>
 <style>
   body { font-family: sans-serif; background: #f3f6fa; color: #111; margin:0; display:flex; flex-direction:column; height:100vh;}
   #chat { padding: 16px; height: 70vh; overflow-y: auto; border-bottom: 1px solid #ccc; flex-grow:1; }
@@ -29,7 +29,7 @@
 //        JOSH’S AI — With Groq LLaMA 3.1 Support
 // ======================================================
 
-const GROQ_API_KEY = "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";
+const GROQ_API_KEY = ""; // Add your key if available
 const GROQ_MODEL = "llama3-8b-8192";
 
 // ======================================================
@@ -38,7 +38,7 @@ const AI_SETTINGS = {
   name: "Josh's AI",
   personality: "calm, intelligent, friendly deep-voiced male",
   memoryEnabled: true,
-  historyLimit: 20
+  historyLimit: 50
 };
 
 // ======================================================
@@ -72,17 +72,27 @@ function updateMemory(userMsg) {
 }
 
 // ======================================================
-// OFFLINE FALLBACK
+// SMART OFFLINE AI
 function miniGPT(prompt) {
-  if (prompt.includes("why")) return "Because there's a logical reason behind it.";
-  if (prompt.includes("how")) return "Let me break it down in a simple way.";
-  if (prompt.includes("what")) return "Here's what you need to know.";
-  return "Tell me more so I can help better.";
+  prompt = prompt.toLowerCase();
+  let response = "";
+  if (memory.username) response += `Hey ${memory.username}, `;
+  if (memory.likes && memory.likes.length > 0) response += `I remember you like ${memory.likes.join(", ")}. `;
+
+  if (prompt.includes("why")) return response + "I think the reason is probably connected to some underlying logic or cause.";
+  if (prompt.includes("how")) return response + "Let's break it down step by step so it makes sense.";
+  if (prompt.includes("what")) return response + "Here’s what I know about that topic.";
+  if (prompt.includes("who")) return response + "That depends on the context; could you clarify?";
+  if (prompt.includes("when")) return response + "Timing can vary, but generally it happens under certain conditions.";
+  if (prompt.includes("help") || prompt.includes("problem")) return response + "I’m here to help—let’s tackle it together.";
+  
+  return response + "Interesting! Tell me more so I can give a better answer.";
 }
 
 // ======================================================
 // GROQ API CALL
 async function groqAI(userMsg) {
+  if (!GROQ_API_KEY) return null; // skip if no key
   try {
     const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -114,7 +124,6 @@ function buildChatHistory(userMsg) {
 // MAIN BRAIN
 async function smartAI(userMsg) {
   const msg = userMsg.toLowerCase();
-
   if (msg.startsWith("/clear")) { localStorage.setItem("ai_chat", JSON.stringify([])); chatHistory = []; return "Chat cleared! Ready to start fresh."; }
   updateMemory(userMsg);
 
