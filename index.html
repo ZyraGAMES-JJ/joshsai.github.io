@@ -3,43 +3,81 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Josh's AI - Offline Smart</title>
+<title>NeuraMind AI</title>
 <style>
-  body { font-family: sans-serif; background: #f3f6fa; color: #111; margin:0; display:flex; flex-direction:column; height:100vh;}
-  #chat { padding: 16px; height: 70vh; overflow-y: auto; border-bottom: 1px solid #ccc; flex-grow:1; }
-  .message { max-width: 70%; padding: 10px 14px; margin-bottom: 12px; border-radius: 12px; word-wrap: break-word;}
-  .you { background: #dce4ff; margin-left: auto; }
-  .ai { background: #fff; margin-right: auto; }
-  #input-area { display: flex; padding: 12px; gap: 8px; }
-  #msg { flex:1; padding: 10px; border-radius: 10px; border: 1px solid #aaa; }
-  #send { padding: 10px 14px; border-radius: 10px; border: none; background: #3a71ff; color:white; cursor:pointer; }
-  .typing { font-style: italic; opacity:0.7; }
+  /* =========================
+        GENERAL STYLES
+  ========================= */
+  body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; color: #111; margin:0; display:flex; flex-direction:column; height:100vh;}
+  header { display:flex; align-items:center; padding:12px 20px; background:#3a71ff; color:white; }
+  header img { width:40px; height:40px; margin-right:12px; }
+  header h1 { font-size:1.3rem; margin:0; }
+
+  #login-screen, #about-screen { display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; gap:12px; }
+  #login-screen input { padding:10px; border-radius:8px; border:1px solid #ccc; width:200px; }
+  #login-screen button { padding:10px 16px; border:none; border-radius:8px; background:#3a71ff; color:white; cursor:pointer; }
+
+  #chat-container { display:flex; flex-direction:column; height:100vh; }
+  #chat { padding:16px; height:70vh; overflow-y:auto; border-bottom:1px solid #ccc; flex-grow:1; }
+  .message { max-width:70%; padding:10px 14px; margin-bottom:12px; border-radius:12px; word-wrap:break-word; }
+  .you { background:#dce4ff; margin-left:auto; }
+  .ai { background:#fff; margin-right:auto; }
+  .typing { font-style:italic; opacity:0.7; }
+
+  #input-area { display:flex; padding:12px; gap:8px; background:white; }
+  #msg { flex:1; padding:10px; border-radius:10px; border:1px solid #aaa; }
+  #send { padding:10px 14px; border-radius:10px; border:none; background:#3a71ff; color:white; cursor:pointer; }
+  #about { padding:16px; font-size:0.95rem; background:#eef2ff; margin:12px; border-radius:8px; }
+
 </style>
 </head>
 <body>
 
-<div id="chat"></div>
-<div id="input-area">
-  <input id="msg" placeholder="Ask Josh's AI anything...">
-  <button id="send">Send</button>
+<header>
+  <!-- Logo SVG -->
+  <svg width="40" height="40" viewBox="0 0 100 100" fill="white" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="50" cy="50" r="45" stroke="white" stroke-width="5" fill="#3a71ff"/>
+    <path d="M50 20 L65 80 L50 65 L35 80 Z" fill="white"/>
+  </svg>
+  <h1>NeuraMind AI</h1>
+</header>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <h2>Welcome to NeuraMind AI</h2>
+  <input type="text" id="username" placeholder="Enter your name">
+  <button id="login-btn">Start Chat</button>
+</div>
+
+<!-- CHAT INTERFACE -->
+<div id="chat-container" style="display:none;">
+  <div id="chat"></div>
+  <div id="input-area">
+    <input id="msg" placeholder="Ask NeuraMind AI anything...">
+    <button id="send">Send</button>
+  </div>
+  <div id="about">
+    <strong>About NeuraMind AI:</strong> This offline smart AI remembers your preferences, learns your likes, and responds intelligently. All data is stored locally. Built for personal assistant tasks and fun conversations!
+  </div>
 </div>
 
 <script>
 // ======================================================
-//        JOSH’S AI — Fully Offline
+//        NEURAMIND AI — Fully Offline
 // ======================================================
 
 const AI_SETTINGS = {
-  name: "Josh's AI",
-  personality: "calm, intelligent, friendly deep-voiced male",
+  name: "NeuraMind AI",
+  personality: "calm, intelligent, friendly deep-voiced assistant",
   memoryEnabled: true,
   historyLimit: 50
 };
 
 let memory = JSON.parse(localStorage.getItem("ai_memory") || "{}");
 let chatHistory = JSON.parse(localStorage.getItem("ai_chat") || []);
-
 let maleVoice = null;
+
+// Load voice
 function loadVoice() {
   const voices = speechSynthesis.getVoices();
   maleVoice = voices.find(v => /Male|David|Daniel|Alex|Google UK English Male/i.test(v.name)) || voices[0];
@@ -87,9 +125,12 @@ function smartAI(userMsg) {
 
 // ======================================================
 // CHAT UI
+// ======================================================
+
 const chat = document.getElementById("chat");
 const msg = document.getElementById("msg");
 
+// Add message
 function addMessage(text, who) {
   const div = document.createElement("div");
   div.className = `message ${who}`;
@@ -101,11 +142,10 @@ function addMessage(text, who) {
   localStorage.setItem("ai_chat", JSON.stringify(chatHistory));
 }
 
+// Replay history
 chatHistory.forEach(m => addMessage(m.text, m.role));
 
-document.getElementById("send").onclick = runAI;
-msg.onkeydown = e => { if (e.key === "Enter") runAI(); };
-
+// Run AI
 function runAI() {
   const text = msg.value.trim();
   if (!text) return;
@@ -115,7 +155,7 @@ function runAI() {
 
   const typing = document.createElement("div");
   typing.className = "message ai typing";
-  typing.textContent = "Josh's AI is thinking...";
+  typing.textContent = "NeuraMind AI is thinking...";
   chat.appendChild(typing);
   chat.scrollTop = chat.scrollHeight;
 
@@ -124,8 +164,31 @@ function runAI() {
     typing.remove();
     addMessage(reply, "ai");
     speak(reply);
-  }, 500); // simulate thinking
+  }, 500);
 }
+
+// Event listeners
+document.getElementById("send").onclick = runAI;
+msg.onkeydown = e => { if (e.key === "Enter") runAI(); };
+
+// ======================================================
+// LOGIN LOGIC
+// ======================================================
+const loginScreen = document.getElementById("login-screen");
+const chatContainer = document.getElementById("chat-container");
+const loginBtn = document.getElementById("login-btn");
+const usernameInput = document.getElementById("username");
+
+loginBtn.onclick = () => {
+  const name = usernameInput.value.trim();
+  if (!name) return alert("Please enter your name!");
+  memory.username = name;
+  saveMemory();
+  loginScreen.style.display = "none";
+  chatContainer.style.display = "flex";
+  addMessage(`Hello ${name}, I'm NeuraMind AI. Ask me anything!`, "ai");
+};
+
 </script>
 
 </body>
