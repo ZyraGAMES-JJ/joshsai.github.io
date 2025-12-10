@@ -1,154 +1,46 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Josh's AI</title>
-
-<style>
-body {
-  margin: 0;
-  font-family: system-ui, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  --bg: #f3f6fa;
-  --text: #111;
-  --bubble-ai: #ffffff;
-  --bubble-you: #dce4ff;
-  transition: .3s;
-}
-
-body.dark {
-  --bg: #0f1114;
-  --text: #f5f5f5;
-  --bubble-ai: #1c1f24;
-  --bubble-you: #2e3b5a;
-}
-
-header {
-  background: #3a71ff;
-  padding: 16px;
-  font-size: 20px;
-  font-weight: bold;
-  text-align: center;
-  color: white;
-}
-
-#toggleDark {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  background: #ffffff33;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 6px;
-  color: white;
-  cursor: pointer;
-}
-
-#chat {
-  padding: 16px;
-  height: 70vh;
-  overflow-y: auto;
-}
-
-.message {
-  max-width: 70%;
-  padding: 10px 14px;
-  margin-bottom: 12px;
-  border-radius: 12px;
-  white-space: pre-wrap;
-}
-
-.you {
-  background: var(--bubble-you);
-  margin-left: auto;
-}
-
-.ai {
-  background: var(--bubble-ai);
-  margin-right: auto;
-}
-
-.typing {
-  opacity: .7;
-  font-style: italic;
-}
-
-#input-area {
-  padding: 12px;
-  background: #fff2;
-  display: flex;
-  gap: 8px;
-}
-
-#msg {
-  flex: 1;
-  padding: 10px;
-  border-radius: 10px;
-  border: 1px solid #aaa;
-}
-
-#send, #mic {
-  padding: 10px 14px;
-  border-radius: 10px;
-  border: none;
-  cursor: pointer;
-}
-
-#send {
-  background: #3a71ff;
-  color: white;
-}
-
-#mic {
-  background: #ffd13a;
-}
-</style>
-</head>
-
-<body>
-
-<header>Josh's AI
-  <button id="toggleDark">Dark</button>
-</header>
-
-<div id="chat"></div>
-
-<div id="input-area">
-  <input id="msg" placeholder="Ask Josh's AI anything...">
-  <button id="mic">🎤</button>
-  <button id="send">Send</button>
-</div>
-
 <script>
-// --------------------------
+// -----------------------
+// Male Voice Setup
+// -----------------------
+let maleVoice = null;
+function loadVoice() {
+  const voices = speechSynthesis.getVoices();
+  maleVoice =
+    voices.find(v => /male|deep|baritone/i.test(v.name)) ||
+    voices.find(v => /David|Alex|Daniel|Google UK English Male/i.test(v.name)) ||
+    voices[0];
+}
+speechSynthesis.onvoiceschanged = loadVoice;
+
+function speak(text) {
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.voice = maleVoice;
+  utter.pitch = 0.9;
+  utter.rate = 1;
+  speechSynthesis.speak(utter);
+}
+
+// -----------------------
 // Voice Input
-// --------------------------
+// -----------------------
 let recognition;
 try {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  recognition = new SpeechRecognition();
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
   recognition.lang = "en-US";
 } catch { recognition = null; }
 
 document.getElementById("mic").onclick = () => {
-  if (!recognition) {
-    alert("Voice input not supported on this device.");
-    return;
-  }
+  if (!recognition) return alert("Voice input not supported on this device.");
   recognition.start();
 };
+if (recognition) recognition.onresult = e => {
+  document.getElementById("msg").value = e.results[0][0].transcript;
+};
 
-if (recognition) {
-  recognition.onresult = (e) => {
-    document.getElementById("msg").value = e.results[0][0].transcript;
-  };
-}
-
-// --------------------------
-// Chat Utility
-// --------------------------
+// -----------------------
+// Chat UI
+// -----------------------
 const chat = document.getElementById("chat");
 const msg = document.getElementById("msg");
 
@@ -160,80 +52,92 @@ function addMessage(text, who) {
   chat.scrollTop = chat.scrollHeight;
 }
 
-function speak(text) {
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.rate = 1;
-  speechSynthesis.speak(utter);
-}
+// ------------------------------------------------
+//  🧠 SUPERCHARGED SMART AI ENGINE
+//  (More natural, more intelligent, more helpful)
+// ------------------------------------------------
 
-// --------------------------
-// SMARTER OFFLINE AI
-// --------------------------
-function mathSolve(q) {
-  try {
-    const safe = q.replace(/[^0-9+\-*/().^ ]/g, "").replace(/\^/g, "**");
-    const result = Function("return " + safe)();
-    return "The answer is " + result + ".";
-  } catch {
-    return "I tried solving it, but the expression seems incorrect.";
-  }
-}
+function aiBrain(q) {
+  const text = q.toLowerCase();
 
-function englishHelp(q) {
-  if (/define/i.test(q)) {
-    const w = q.replace(/define/i, "").trim();
-    return `Here’s a simple definition of **${w}**:\nIt refers to something meaningful based on the context you provide.`;
+  // -------------------------------
+  // Math Solver (improved)
+  // -------------------------------
+  if (/^[0-9+\-*/().^ ]+$/.test(text)) {
+    try {
+      const safe = text.replace(/\^/g, "**");
+      const result = Function("return " + safe)();
+      return `Alright, here's the math worked out:\n→ **${result}**`;
+    } catch {
+      return "Hmm... that expression looks a bit off. Try rearranging it for me.";
+    }
   }
 
-  if (/synonym/i.test(q)) {
-    const w = q.replace(/synonym/i, "").trim();
-    return `Some common synonyms for **${w}** might include similar everyday words that match its meaning in context.`;
+  // -------------------------------
+  // Encyclopedia-style knowledge
+  // -------------------------------
+  const knowledge = {
+    earth: "Earth is the third planet from the Sun and the only known place with life.",
+    sun: "The Sun is a giant sphere of hot plasma and the star at the center of our solar system.",
+    moon: "The Moon is Earth's only natural satellite and affects our tides.",
+    ai: "Artificial Intelligence refers to machines that can think, learn, and solve problems like humans.",
+    history: "History is the record of past events, civilizations, and the development of humanity.",
+    gravity: "Gravity is the force that pulls objects toward each other, discovered by Isaac Newton."
+  };
+  for (let key in knowledge) {
+    if (text.includes(key)) return knowledge[key];
   }
 
-  if (/paraphrase/i.test(q)) {
-    const text = q.replace(/paraphrase/i, "").trim();
-    return "Here’s a clearer version:\n" + text
-      .replace(/important/gi, "significant")
-      .replace(/big/gi, "large")
-      .replace(/smart/gi, "intelligent");
+  // -------------------------------
+  // English helper
+  // -------------------------------
+  if (/define /.test(text)) {
+    const w = q.split("define")[1].trim();
+    return `Here’s a simple definition of **${w}**:\n${w} is a term that depends on the context, but generally refers to something specific within its topic.`;
   }
 
-  return "I can help with definitions, synonyms, paraphrasing, grammar, and explanations.";
+  if (/synonym /.test(text)) {
+    const w = q.split("synonym")[1].trim();
+    return `Here are some synonyms for **${w}**:\n• alternative\n• similar word\n• phrase depending on context`;
+  }
+
+  if (/paraphrase /.test(text)) {
+    const t = q.split("paraphrase")[1].trim();
+    return `Here’s a smoother version:\n"${t}."`;
+  }
+
+  // -------------------------------
+  // Study tips
+  // -------------------------------
+  if (/study|school|learn/.test(text)) {
+    return (
+      "Study Tips:\n• Break tasks into small steps.\n• Teach the idea to someone else.\n" +
+      "• Test yourself often.\n• Take short breaks to stay focused.\n• Sleep well—your brain needs it."
+    );
+  }
+
+  // -------------------------------
+  // Natural conversation
+  // -------------------------------
+  if (/how are you/.test(text)) return "I'm doing great, thanks for asking! Ready to chat or help with anything.";
+  if (/who are you/.test(text)) return "I’m Josh’s AI — smarter, more natural, and always learning.";
+  if (/hello|hi|hey/.test(text)) return "Hey! What’s up? How can I help you today?";
+
+  // -------------------------------
+  // Default smart reply
+  // -------------------------------
+  return (
+    "That's a good question. I may not be online like real ChatGPT, " +
+    "but I can still help with math, English, science, facts, and conversation.\n" +
+    "Tell me more—I’m listening."
+  );
 }
 
-// Small knowledge engine (offline)
-function knowledge(q) {
-  if (/earth|planet/i.test(q)) return "Earth is the third planet from the Sun and the only known world to support life.";
-  if (/sun/i.test(q)) return "The Sun is a massive ball of hot plasma and the center of our solar system.";
-  if (/ai|artificial intelligence/i.test(q)) return "Artificial intelligence refers to machines designed to perform tasks that require human-like thinking.";
-  if (/history|past/i.test(q)) return "History is the study of past events, civilizations, and human development.";
-
-  return null;
-}
-
-function studyTips() {
-  return "Study Tips:\n• Break tasks into small goals.\n• Explain what you learned out loud.\n• Test yourself often.\n• Take short breaks to stay focused.";
-}
-
-function offlineAI(q) {
-  q = q.toLowerCase();
-
-  if (/[0-9+\-*/()^]/.test(q)) return mathSolve(q);
-  if (/define|synonym|paraphrase|grammar|english/.test(q)) return englishHelp(q);
-
-  const know = knowledge(q);
-  if (know) return know;
-
-  if (/study|tips|school/.test(q)) return studyTips();
-
-  return "I'm Josh's AI — smarter, faster, and ready to help! Ask me about math, English, science, history, or general knowledge.";
-}
-
-// --------------------------
+// -----------------------------
 // Chat Handling
-// --------------------------
+// -----------------------------
 document.getElementById("send").onclick = runAI;
-msg.onkeydown = (e) => { if (e.key === "Enter") runAI(); };
+msg.onkeydown = e => { if (e.key === "Enter") runAI(); };
 
 function runAI() {
   const text = msg.value.trim();
@@ -244,24 +148,21 @@ function runAI() {
 
   const typing = document.createElement("div");
   typing.className = "message ai typing";
-  typing.textContent = "Josh's AI is typing...";
+  typing.textContent = "Josh's AI is thinking...";
   chat.appendChild(typing);
 
   setTimeout(() => {
     typing.remove();
-    const reply = offlineAI(text);
+    const reply = aiBrain(text);
     addMessage(reply, "ai");
     speak(reply);
   }, 600);
 }
 
-// --------------------------
+// -----------------------------
 // Dark Mode
-// --------------------------
+// -----------------------------
 document.getElementById("toggleDark").onclick = () => {
   document.body.classList.toggle("dark");
 };
 </script>
-
-</body>
-</html>
