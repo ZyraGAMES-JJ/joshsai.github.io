@@ -1,27 +1,33 @@
 <script>
 // ======================================================
-// ===============  J O S H ' S   A I ===================
-//      FULL UPGRADE: Memory + Personality + MiniGPT
+//        JOSH’S AI — With Groq LLaMA 3.1 Support
 // ======================================================
 
-// ------------------------------------------------------
-// SETTINGS (you can change these)
-// ------------------------------------------------------
+// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+// INSERT YOUR NEW GROQ KEY HERE (AFTER YOU DELETE OLD ONE)
+// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+const GROQ_API_KEY = "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";
+
+// API Model
+const GROQ_MODEL = "llama3-8b-8192"; 
+
+// ======================================================
+// PERSONALITY SETTINGS
+// ======================================================
 const AI_SETTINGS = {
   name: "Josh's AI",
-  personality: "friendly, intelligent, calm, deep-voiced male",
+  personality: "calm, intelligent, friendly deep-voiced male",
   memoryEnabled: true,
-  emotionEnabled: true,
   historyLimit: 20
 };
 
-// Load saved memory
+// Load memory + history
 let memory = JSON.parse(localStorage.getItem("ai_memory") || "{}");
 let chatHistory = JSON.parse(localStorage.getItem("ai_chat") || "[]");
 
-// ------------------------------------------------------
-// MALE VOICE SYSTEM
-// ------------------------------------------------------
+// ======================================================
+// VOICE SYSTEM (Male voice)
+// ======================================================
 let maleVoice = null;
 
 function loadVoice() {
@@ -41,120 +47,104 @@ function speak(text) {
   speechSynthesis.speak(u);
 }
 
-// ------------------------------------------------------
-// MEMORY SYSTEM
-// ------------------------------------------------------
+// ======================================================
+// MEMORY HANDLING
+// ======================================================
 function saveMemory() {
   localStorage.setItem("ai_memory", JSON.stringify(memory));
 }
 
-function updateMemory(message) {
-  if (!AI_SETTINGS.memoryEnabled) return;
+function updateMemory(userMsg) {
+  const m = userMsg.toLowerCase();
 
-  const lower = message.toLowerCase();
-
-  // extract name
-  if (lower.includes("my name is")) {
-    const name = message.split("my name is")[1].trim();
-    memory.username = name;
+  if (m.includes("my name is")) {
+    memory.username = userMsg.split("my name is")[1].trim();
     saveMemory();
   }
 
-  // preferences
-  if (lower.includes("i like")) {
-    const liking = message.split("i like")[1].trim();
+  if (m.includes("i like")) {
     memory.likes = memory.likes || [];
-    memory.likes.push(liking);
+    memory.likes.push(userMsg.split("i like")[1].trim());
     saveMemory();
   }
 }
 
-// ------------------------------------------------------
-// MINI GPT REASONING ENGINE (offline)
-// ------------------------------------------------------
+// ======================================================
+// OFFLINE MINI-GPT (fallback)
+// ======================================================
 function miniGPT(prompt) {
-  // Lightweight heuristic reasoning
-  if (prompt.includes("why")) {
-    return "Because there is a logical cause behind it. If you want, I can explain in detail.";
-  }
-  if (prompt.includes("how")) {
-    return "Let me explain step by step in a simple way.";
-  }
-  if (prompt.includes("what")) {
-    return "Here’s what you need to know about that.";
-  }
-  return null;
+  if (prompt.includes("why")) return "Because there's a logical reason behind it.";
+  if (prompt.includes("how")) return "Let me break it down in a simple way.";
+  if (prompt.includes("what")) return "Here's what you need to know.";
+  return "Tell me more so I can help better.";
 }
 
-// ------------------------------------------------------
-// PERSONALITY GENERATOR
-// ------------------------------------------------------
-function applyPersonality(message) {
-  return `(${AI_SETTINGS.personality}) ${message}`;
+// ======================================================
+// GROQ ONLINE AI REQUEST
+// ======================================================
+async function groqAI(userMsg) {
+  try {
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${GROQ_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        messages: buildChatHistory(userMsg),
+        temperature: 0.8
+      })
+    });
+
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || null;
+
+  } catch {
+    return null; // fallback to offline brain
+  }
 }
 
-// ------------------------------------------------------
-// EMOTIONS ENGINE
-// ------------------------------------------------------
-function emotionTone() {
-  if (!AI_SETTINGS.emotionEnabled) return "";
-  const tones = ["🙂", "😄", "🤔", "😎", "😌"];
-  return tones[Math.floor(Math.random() * tones.length)];
+function buildChatHistory(userMsg) {
+  const messages = chatHistory
+    .slice(-AI_SETTINGS.historyLimit)
+    .map(m => ({
+      role: m.role === "you" ? "user" : "assistant",
+      content: m.text
+    }));
+
+  messages.push({ role: "user", content: userMsg });
+
+  return messages;
 }
 
-// ------------------------------------------------------
-// BRAIN: MAIN AI LOGIC
-// ------------------------------------------------------
-function smartAI(userMsg) {
+// ======================================================
+// MAIN BRAIN
+// ======================================================
+async function smartAI(userMsg) {
   const msg = userMsg.toLowerCase();
 
-  // ----- COMMAND: /clear -----
+  // Command: /clear
   if (msg.startsWith("/clear")) {
-    chatHistory = [];
     localStorage.setItem("ai_chat", JSON.stringify([]));
-    return "Chat cleared! Ready for a fresh start.";
+    chatHistory = [];
+    return "Chat cleared! Ready to start fresh.";
   }
 
-  // ----- UPDATE MEMORY -----
+  // Update memory
   updateMemory(userMsg);
 
-  // ----- BASIC GREETINGS -----
-  if (/hello|hi|hey/.test(msg))
-    return `Hey${memory.username ? " " + memory.username : ""}! How can I help you today? ${emotionTone()}`;
+  // Try Groq online AI first
+  const online = await groqAI(userMsg);
+  if (online) return online;
 
-  if (/how are you/.test(msg))
-    return "I'm feeling great — ready to help with anything you need. " + emotionTone();
-
-  if (/who are you/.test(msg))
-    return "I'm Josh’s AI — upgraded, smarter, and always learning. " + emotionTone();
-
-  // ----- MEMORY RESPONSES -----
-  if (memory.username && msg.includes("my name")) 
-    return `Your name is ${memory.username}! I remember.`;
-
-  if (memory.likes && msg.includes("what do i like"))
-    return `You like: ${memory.likes.join(", ")}.`;
-
-  // ----- MINI GPT (Reasoning) -----
-  const reasoning = miniGPT(msg);
-  if (reasoning) return reasoning + " " + emotionTone();
-
-  // ----- KNOWLEDGE -----
-  const facts = {
-    earth: "Earth is the third planet from the Sun and the only known planet with life.",
-    sun: "The Sun is a giant ball of plasma that powers our solar system.",
-    gravity: "Gravity is the force that pulls objects together.",
-    ai: "Artificial Intelligence is the simulation of human intelligence in machines."
-  };
-  for (let k in facts) if (msg.includes(k)) return facts[k];
-
-  // ----- DEFAULT CHATGPT-LIKE RESPONSE -----
-  return `That's interesting. Tell me more so I can understand better. ${emotionTone()}`;
+  // Offline fallback
+  return miniGPT(msg);
 }
 
-// ------------------------------------------------------
+// ======================================================
 // CHAT UI
-// ------------------------------------------------------
+// ======================================================
 const chat = document.getElementById("chat");
 const msg = document.getElementById("msg");
 
@@ -165,26 +155,17 @@ function addMessage(text, who) {
   chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
 
-  if (who === "ai") {
-    chatHistory.push({role: "ai", text});
-    localStorage.setItem("ai_chat", JSON.stringify(chatHistory));
-  }
-  if (who === "you") {
-    chatHistory.push({role: "you", text});
-    localStorage.setItem("ai_chat", JSON.stringify(chatHistory));
-  }
+  chatHistory.push({role: who, text});
+  localStorage.setItem("ai_chat", JSON.stringify(chatHistory));
 }
 
-// Load previous chat
+// Load old chat
 chatHistory.forEach(m => addMessage(m.text, m.role));
 
-// ------------------------------------------------------
-// HANDLE SEND
-// ------------------------------------------------------
 document.getElementById("send").onclick = runAI;
 msg.onkeydown = e => { if (e.key === "Enter") runAI(); };
 
-function runAI() {
+async function runAI() {
   const text = msg.value.trim();
   if (!text) return;
 
@@ -193,15 +174,13 @@ function runAI() {
 
   const typing = document.createElement("div");
   typing.className = "message ai typing";
-  typing.textContent = `${AI_SETTINGS.name} is typing...`;
+  typing.textContent = "Josh's AI is thinking...";
   chat.appendChild(typing);
 
-  setTimeout(() => {
-    typing.remove();
-    let reply = smartAI(text);
-    reply = applyPersonality(reply); // personality filter
-    addMessage(reply, "ai");
-    speak(reply);
-  }, 600);
+  const reply = await smartAI(text);
+
+  typing.remove();
+  addMessage(reply, "ai");
+  speak(reply);
 }
 </script>
