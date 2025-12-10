@@ -40,31 +40,9 @@ body {
   font-weight: bold;
 }
 
-#login-screen {
-  margin: auto;
-  text-align: center;
-}
-
-#login-screen input {
-  padding: 10px;
-  width: 260px;
-  border-radius: 6px;
-  border: none;
-  font-size: 16px;
-}
-
-#login-screen button {
-  padding: 10px 18px;
-  margin-top: 10px;
-  background: #3a7bff;
-  border: none;
-  color: white;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
 #chat-container {
-  display: none;
+  flex: 1;
+  display: flex;
   flex-direction: column;
   height: 100vh;
 }
@@ -128,12 +106,6 @@ body {
   <div id="title">CatGpt V1</div>
 </div>
 
-<div id="login-screen">
-  <h2>Login to CatGpt</h2>
-  <input id="username" placeholder="Enter your name..."><br>
-  <button id="login-btn">Enter</button>
-</div>
-
 <div id="chat-container">
   <div id="chat"></div>
 
@@ -191,16 +163,49 @@ function solveMath(input) {
   return null;
 }
 
-/* ---------- GPT-Style Brain ---------- */
-let userName = "";
+/* ---------- GPT-Style Brain + Geometry ---------- */
+let userName = "User"; // Default username
 
 function UltraBrain(input) {
   const q = input.toLowerCase();
   let intro = userName ? userName + ", " : "";
 
+  // --- Check for math ---
   let math = solveMath(input);
   if (math !== null) return intro + "The answer is: " + math;
 
+  // --- Geometry questions ---
+  if (q.includes("triangle") && q.includes("right") && q.includes("leg") && q.includes("hypotenuse")) {
+    const nums = input.match(/[0-9]+/g);
+    if (nums && nums.length >= 2) {
+      const leg = parseFloat(nums[0]);
+      const hyp = parseFloat(nums[1]);
+      const otherLeg = Math.sqrt(hyp*hyp - leg*leg);
+      const area = (leg * otherLeg)/2;
+      return intro + `The other leg is ${otherLeg.toFixed(2)} and the area is ${area.toFixed(2)}.`;
+    }
+  }
+
+  if (q.includes("area of circle")) {
+    const nums = input.match(/[0-9]+/g);
+    if (nums) {
+      const r = parseFloat(nums[0]);
+      const area = Math.PI * r * r;
+      return intro + `The area of the circle is ${area.toFixed(2)}.`;
+    }
+  }
+
+  if (q.includes("perimeter of rectangle") || q.includes("perimeter of square")) {
+    const nums = input.match(/[0-9]+/g);
+    if (nums && nums.length >= 2) {
+      const w = parseFloat(nums[0]);
+      const h = parseFloat(nums[1]);
+      const perimeter = 2*(w+h);
+      return intro + `The perimeter is ${perimeter.toFixed(2)}.`;
+    }
+  }
+
+  // --- General Knowledge ---
   for (const key in KNOWLEDGE)
     if (q.includes(key)) return intro + KNOWLEDGE[key];
 
@@ -237,7 +242,6 @@ function typeMessage(div, text, speed = 22) {
 /* =====================================================
      UI + CHAT SYSTEM
 ===================================================== */
-
 const chat = document.getElementById("chat");
 const msg = document.getElementById("msg");
 
@@ -273,16 +277,8 @@ function runAI() {
 document.getElementById("send").onclick = runAI;
 msg.onkeydown = e => (e.key === "Enter" ? runAI() : null);
 
-/* ---------- Login ---------- */
-document.getElementById("login-btn").onclick = () => {
-  userName = document.getElementById("username").value.trim();
-  if (!userName) return alert("Bru enter your name");
-
-  document.getElementById("login-screen").style.display = "none";
-  document.getElementById("chat-container").style.display = "flex";
-
-  addAIMessage(`Welcome ${userName}. I'm CatGptV1. Ask me anything.`);
-};
+/* ---------- Welcome message ---------- */
+addAIMessage(`Welcome ${userName}. I'm CatGptV1. Ask me anything, including geometry questions.`);
 </script>
 
 </body>
