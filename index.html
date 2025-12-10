@@ -1,15 +1,10 @@
 <script>
 // ======================================================
-//        JOSH’S AI — With Groq LLaMA 3.1 Support
+//        JOSH’S AI — Using Hugging Face Free API
 // ======================================================
 
-// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-// INSERT YOUR NEW GROQ KEY HERE (AFTER YOU DELETE OLD ONE)
-// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-const GROQ_API_KEY = "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";
-
-// API Model
-const GROQ_MODEL = "llama3-8b-8192"; 
+// API Model (anonymous/public GPT-2)
+const HF_MODEL = "gpt2";  // smaller free model, no key needed
 
 // ======================================================
 // PERSONALITY SETTINGS
@@ -80,42 +75,21 @@ function miniGPT(prompt) {
 }
 
 // ======================================================
-// GROQ ONLINE AI REQUEST
+// HUGGING FACE FREE AI REQUEST
 // ======================================================
-async function groqAI(userMsg) {
+async function hfAI(userMsg) {
   try {
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const res = await fetch(`https://api-inference.huggingface.co/models/${HF_MODEL}`, {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${GROQ_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: GROQ_MODEL,
-        messages: buildChatHistory(userMsg),
-        temperature: 0.8
-      })
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ inputs: userMsg })
     });
-
     const data = await res.json();
-    return data.choices?.[0]?.message?.content || null;
-
+    if (data.error) return null;
+    return data[0]?.generated_text || null;
   } catch {
-    return null; // fallback to offline brain
+    return null;
   }
-}
-
-function buildChatHistory(userMsg) {
-  const messages = chatHistory
-    .slice(-AI_SETTINGS.historyLimit)
-    .map(m => ({
-      role: m.role === "you" ? "user" : "assistant",
-      content: m.text
-    }));
-
-  messages.push({ role: "user", content: userMsg });
-
-  return messages;
 }
 
 // ======================================================
@@ -134,8 +108,8 @@ async function smartAI(userMsg) {
   // Update memory
   updateMemory(userMsg);
 
-  // Try Groq online AI first
-  const online = await groqAI(userMsg);
+  // Try Hugging Face AI first
+  const online = await hfAI(userMsg);
   if (online) return online;
 
   // Offline fallback
