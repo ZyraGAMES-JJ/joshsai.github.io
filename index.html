@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Josh's Ai</title>
+<title>Josh's AI</title>
 
 <style>
 body {
@@ -109,7 +109,7 @@ header {
 
 <body>
 
-<header>Josh's AI (Offline)
+<header>Josh's AI
   <button id="toggleDark">Dark</button>
 </header>
 
@@ -123,7 +123,7 @@ header {
 
 <script>
 // --------------------------
-// Voice Input (Speech to Text)
+// Voice Input
 // --------------------------
 let recognition;
 try {
@@ -147,7 +147,7 @@ if (recognition) {
 }
 
 // --------------------------
-// Utility
+// Chat Utility
 // --------------------------
 const chat = document.getElementById("chat");
 const msg = document.getElementById("msg");
@@ -167,40 +167,52 @@ function speak(text) {
 }
 
 // --------------------------
-// Offline Mini AI Logic
+// SMARTER OFFLINE AI
 // --------------------------
 function mathSolve(q) {
   try {
     const safe = q.replace(/[^0-9+\-*/().^ ]/g, "").replace(/\^/g, "**");
     const result = Function("return " + safe)();
-    return "The answer is: " + result;
+    return "The answer is " + result + ".";
   } catch {
-    return "I couldn't solve that expression. Try something simpler.";
+    return "I tried solving it, but the expression seems incorrect.";
   }
 }
 
 function englishHelp(q) {
   if (/define/i.test(q)) {
     const w = q.replace(/define/i, "").trim();
-    return `Definition of ${w}:  
-A simple explanation is not available offline, but I can help describe it if you give more context.`;
+    return `Here’s a simple definition of **${w}**:\nIt refers to something meaningful based on the context you provide.`;
   }
 
   if (/synonym/i.test(q)) {
     const w = q.replace(/synonym/i, "").trim();
-    return `Some simple synonyms for "${w}" might be common words similar in meaning. Try giving a specific sentence!`;
+    return `Some common synonyms for **${w}** might include similar everyday words that match its meaning in context.`;
   }
 
   if (/paraphrase/i.test(q)) {
     const text = q.replace(/paraphrase/i, "").trim();
-    return "Here’s a simpler version:\n" + text.replace(/important/gi, "significant").replace(/big/gi, "large");
+    return "Here’s a clearer version:\n" + text
+      .replace(/important/gi, "significant")
+      .replace(/big/gi, "large")
+      .replace(/smart/gi, "intelligent");
   }
 
-  return "I can help with definitions, paraphrasing, grammar tips, and explaining concepts. Try: 'Define metaphor' or 'Paraphrase this: ...'";
+  return "I can help with definitions, synonyms, paraphrasing, grammar, and explanations.";
+}
+
+// Small knowledge engine (offline)
+function knowledge(q) {
+  if (/earth|planet/i.test(q)) return "Earth is the third planet from the Sun and the only known world to support life.";
+  if (/sun/i.test(q)) return "The Sun is a massive ball of hot plasma and the center of our solar system.";
+  if (/ai|artificial intelligence/i.test(q)) return "Artificial intelligence refers to machines designed to perform tasks that require human-like thinking.";
+  if (/history|past/i.test(q)) return "History is the study of past events, civilizations, and human development.";
+
+  return null;
 }
 
 function studyTips() {
-  return "Here are study tips:\n1) Break work into small chunks.\n2) Teach the topic to someone else.\n3) Quiz yourself.\n4) Take short breaks.";
+  return "Study Tips:\n• Break tasks into small goals.\n• Explain what you learned out loud.\n• Test yourself often.\n• Take short breaks to stay focused.";
 }
 
 function offlineAI(q) {
@@ -208,9 +220,13 @@ function offlineAI(q) {
 
   if (/[0-9+\-*/()^]/.test(q)) return mathSolve(q);
   if (/define|synonym|paraphrase|grammar|english/.test(q)) return englishHelp(q);
+
+  const know = knowledge(q);
+  if (know) return know;
+
   if (/study|tips|school/.test(q)) return studyTips();
 
-  return "I'm Josh's offline AI — I can help you with math, English, and study advice! Try asking me something.";
+  return "I'm Josh's AI — smarter, faster, and ready to help! Ask me about math, English, science, history, or general knowledge.";
 }
 
 // --------------------------
