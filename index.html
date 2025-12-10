@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Josh's Ai</title>
+<title>Josh's AI - Offline Smart</title>
 <style>
   body { font-family: sans-serif; background: #f3f6fa; color: #111; margin:0; display:flex; flex-direction:column; height:100vh;}
   #chat { padding: 16px; height: 70vh; overflow-y: auto; border-bottom: 1px solid #ccc; flex-grow:1; }
@@ -26,16 +26,19 @@
 
 <script>
 // ======================================================
-//        JOSH’S AI — Groq API Only
+//        JOSH’S AI — Fully Offline
 // ======================================================
 
-const GROQ_API_KEY = "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";
-const GROQ_MODEL = "llama3-8b-8192";
+const AI_SETTINGS = {
+  name: "Josh's AI",
+  personality: "calm, intelligent, friendly deep-voiced male",
+  memoryEnabled: true,
+  historyLimit: 50
+};
 
-// Chat history (for context)
+let memory = JSON.parse(localStorage.getItem("ai_memory") || "{}");
 let chatHistory = JSON.parse(localStorage.getItem("ai_chat") || []);
 
-// Voice Setup
 let maleVoice = null;
 function loadVoice() {
   const voices = speechSynthesis.getVoices();
@@ -50,37 +53,36 @@ function speak(text) {
   speechSynthesis.speak(u);
 }
 
-// ======================================================
-// GROQ API CALL
-async function groqAI(userMsg) {
-  try {
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${GROQ_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: GROQ_MODEL,
-        messages: buildChatHistory(userMsg),
-        temperature: 0.8
-      })
-    });
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content || "I got no response from the API.";
-  } catch (err) {
-    console.error(err);
-    return "API request failed. Check your key or connection.";
-  }
+function saveMemory() { localStorage.setItem("ai_memory", JSON.stringify(memory)); }
+function updateMemory(userMsg) {
+  const m = userMsg.toLowerCase();
+  if (m.includes("my name is")) { memory.username = userMsg.split("my name is")[1].trim(); saveMemory(); }
+  if (m.includes("i like")) { memory.likes = memory.likes || []; memory.likes.push(userMsg.split("i like")[1].trim()); saveMemory(); }
 }
 
-function buildChatHistory(userMsg) {
-  const messages = chatHistory.slice(-20).map(m => ({
-    role: m.role === "you" ? "user" : "assistant",
-    content: m.text
-  }));
-  messages.push({ role: "user", content: userMsg });
-  return messages;
+function smartOfflineAI(userMsg) {
+  userMsg = userMsg.trim();
+  const lower = userMsg.toLowerCase();
+  let response = "";
+
+  if (memory.username) response += `Hey ${memory.username}, `;
+  if (memory.likes && memory.likes.length > 0) response += `I remember you like ${memory.likes.join(", ")}. `;
+
+  const recent = chatHistory.slice(-5).map(m => m.text).join(" ");
+
+  if (lower.includes("why")) return response + "Here's why: " + (recent || "It makes sense logically.");
+  if (lower.includes("how")) return response + "Let's break it down: " + (recent || "Step by step, here's what I think.");
+  if (lower.includes("what")) return response + "Here's what I understand: " + (recent || "Let me explain.");
+  if (lower.includes("who")) return response + "Depends on the context. " + (recent || "Could you clarify?");
+  if (lower.includes("when")) return response + "Timing varies. " + (recent || "It depends on circumstances.");
+  if (lower.includes("help") || lower.includes("problem")) return response + "I’m here to help. " + (recent || "Let's work on it together.");
+
+  return response + "Interesting! " + (recent ? "Earlier you said: " + recent : "Tell me more so I can understand.");
+}
+
+function smartAI(userMsg) {
+  updateMemory(userMsg);
+  return smartOfflineAI(userMsg);
 }
 
 // ======================================================
@@ -99,13 +101,12 @@ function addMessage(text, who) {
   localStorage.setItem("ai_chat", JSON.stringify(chatHistory));
 }
 
-// Load old chat
 chatHistory.forEach(m => addMessage(m.text, m.role));
 
 document.getElementById("send").onclick = runAI;
 msg.onkeydown = e => { if (e.key === "Enter") runAI(); };
 
-async function runAI() {
+function runAI() {
   const text = msg.value.trim();
   if (!text) return;
 
@@ -118,11 +119,12 @@ async function runAI() {
   chat.appendChild(typing);
   chat.scrollTop = chat.scrollHeight;
 
-  const reply = await groqAI(text);
-
-  typing.remove();
-  addMessage(reply, "ai");
-  speak(reply);
+  setTimeout(() => {
+    const reply = smartAI(text);
+    typing.remove();
+    addMessage(reply, "ai");
+    speak(reply);
+  }, 500); // simulate thinking
 }
 </script>
 
