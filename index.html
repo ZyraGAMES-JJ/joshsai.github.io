@@ -3,10 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>CatGPT V1</title>
-
-<!-- Favicon matching the #logo gradient -->
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzNCIgaGVpZ2h0PSIzNCI+PHJlY3Qgd2lkdGg9IjM0IiBoZWlnaHQ9IjM0IiByeD0iNiIgZmlsbD0idXJsKCNncmFkKSIvPjxsaW5lYXJHcmFkaWVudCBpZD0iZ3JhZCIgeDE9IjAlIiB5MT0iMCUiIHgyPSIxMDAlIiB5Mj0iMTAwJSI+PHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iIzNhN2JmZiIvPjxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iIzlhNTVmZiIvPjwvbGluZWFyR3JhZGllbnQ+PC9zdmc+">
+<title>CatGPT V2 (Online)</title>
 
 <style>
 body {
@@ -58,7 +55,6 @@ body {
   padding: 12px 16px;
   margin-bottom: 12px;
   border-radius: 10px;
-  line-height: 1.4;
 }
 
 .you {
@@ -103,7 +99,7 @@ body {
 
 <div id="topbar">
   <div id="logo"></div>
-  <div id="title">CatGPT V1</div>
+  <div id="title">CatGPT V2</div>
 </div>
 
 <div id="chat-container">
@@ -117,117 +113,67 @@ body {
 
 <script>
 /* =====================================================
-     FUNCTIONS FIRST — AS REQUESTED
+    ONLINE MODE — FETCH REAL ANSWERS
 ===================================================== */
 
-/* ---------- Massive Knowledge Base ---------- */
-const KNOWLEDGE = {
-  "earth":"Earth is the third planet from the Sun with life and water.",
-  "sun":"The Sun is a massive star powered by nuclear fusion.",
-  "moon":"The Moon is Earth's natural satellite and affects tides.",
-  "gravity":"Gravity is a force that attracts masses together.",
-  "atom":"An atom is the smallest unit of matter.",
-  "electricity":"Electricity is the flow of electrons.",
-  "heart":"The heart pumps blood throughout the body.",
-  "brain":"The brain controls thought and movement.",
-  "cpu":"A CPU executes instructions and calculations.",
-  "gpu":"A GPU accelerates graphics and AI tasks.",
-  "wifi":"WiFi transmits data using radio waves.",
-  "internet":"The internet is a worldwide data network.",
-  "galaxy":"A galaxy is a massive collection of stars and planets.",
-  "black hole":"A black hole has gravity so strong that light cannot escape."
-};
+async function onlineKnowledge(query) {
+  const encoded = encodeURIComponent(query);
 
-/* ---------- Smart Math Solver ---------- */
-function solveMath(input) {
-  let q = input.toLowerCase();
-
-  q = q.replace(/multiplied by/g, "*");
-  q = q.replace(/times/g, "*");
-  q = q.replace(/x/g, "*");
-  q = q.replace(/plus/g, "+");
-  q = q.replace(/minus/g, "-");
-  q = q.replace(/divided by/g, "/");
-  q = q.replace(/over/g, "/");
-  q = q.replace(/percent of/g, "*0.01*");
-  q = q.replace(/%/g, "*0.01");
-
-  const math = q.match(/[0-9\.\s\+\-\*\/\(\)]+/g);
-  if (!math) return null;
+  // Using AllOrigins to bypass CORS for GitHub Pages
+  const url = `https://api.allorigins.win/raw?url=https://en.wikipedia.org/api/rest_v1/page/summary/${encoded}`;
 
   try {
-    let result = eval(math[0]);
+    const res = await fetch(url);
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    if (data.extract) return data.extract;
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+
+/* ---------- Math Solver ---------- */
+function solveMath(input) {
+  let q = input.toLowerCase();
+  q = q.replace(/multiplied by|times|x/g, "*");
+  q = q.replace(/plus/g, "+");
+  q = q.replace(/minus/g, "-");
+  q = q.replace(/divided by|over/g, "/");
+
+  const match = q.match(/[0-9\.\s\+\-\*\/\(\)]+/g);
+  if (!match) return null;
+
+  try {
+    let result = eval(match[0]);
     if (!isNaN(result)) return result;
   } catch {}
 
   return null;
 }
 
-/* ---------- GPT-Style Brain + Geometry ---------- */
-let userName = "Nigger"; // Default username
 
-function UltraBrain(input) {
-  const q = input.toLowerCase();
-  let intro = userName ? userName + ", " : "";
+/* ---------- Main Brain ---------- */
+async function UltraBrain(input) {
+  let lower = input.toLowerCase();
 
-  // --- Check for math ---
-  let math = solveMath(input);
-  if (math !== null) return intro + "The answer is: " + math;
+  // Math
+  const math = solveMath(input);
+  if (math !== null) return `The answer is: ${math}`;
 
-  // --- Geometry questions ---
-  if (q.includes("triangle") && q.includes("right") && q.includes("leg") && q.includes("hypotenuse")) {
-    const nums = input.match(/[0-9]+/g);
-    if (nums && nums.length >= 2) {
-      const leg = parseFloat(nums[0]);
-      const hyp = parseFloat(nums[1]);
-      const otherLeg = Math.sqrt(hyp*hyp - leg*leg);
-      const area = (leg * otherLeg)/2;
-      return intro + `The other leg is ${otherLeg.toFixed(2)} and the area is ${area.toFixed(2)}.`;
-    }
-  }
+  // Online Knowledge (Wikipedia)
+  const wiki = await onlineKnowledge(input);
+  if (wiki) return wiki;
 
-  if (q.includes("area of circle")) {
-    const nums = input.match(/[0-9]+/g);
-    if (nums) {
-      const r = parseFloat(nums[0]);
-      const area = Math.PI * r * r;
-      return intro + `The area of the circle is ${area.toFixed(2)}.`;
-    }
-  }
-
-  if (q.includes("perimeter of rectangle") || q.includes("perimeter of square")) {
-    const nums = input.match(/[0-9]+/g);
-    if (nums && nums.length >= 2) {
-      const w = parseFloat(nums[0]);
-      const h = parseFloat(nums[1]);
-      const perimeter = 2*(w+h);
-      return intro + `The perimeter is ${perimeter.toFixed(2)}.`;
-    }
-  }
-
-  // --- General Knowledge ---
-  for (const key in KNOWLEDGE)
-    if (q.includes(key)) return intro + KNOWLEDGE[key];
-
-  if (q.startsWith("what is"))
-    return intro + "It refers to something that depends on context—explain more.";
-
-  if (q.startsWith("who is"))
-    return intro + "Tell me more about the person you're asking for.";
-
-  if (q.includes("why"))
-    return intro + "Here's the reasoning behind that: " + input;
-
-  if (q.includes("how"))
-    return intro + "Let me explain how: First understand the basics, then apply them.";
-
-  return intro +
-    "Here's what I understand from your question: \"" + input +
-    "\". If you give more detail, I can give a precise answer.";
+  return `I don't fully know, but here's what I understand from your question: ${input}`;
 }
 
+
 /* ---------- Typing Animation ---------- */
-function typeMessage(div, text, speed = 22) {
+function typeMessage(div, text, speed = 20) {
   let i = 0;
   function t() {
     if (i < text.length) {
@@ -239,9 +185,11 @@ function typeMessage(div, text, speed = 22) {
   t();
 }
 
+
 /* =====================================================
-     UI + CHAT SYSTEM
+    CHAT SYSTEM
 ===================================================== */
+
 const chat = document.getElementById("chat");
 const msg = document.getElementById("msg");
 
@@ -261,24 +209,22 @@ function addAIMessage(text) {
   chat.scrollTop = chat.scrollHeight;
 }
 
-function runAI() {
+async function runAI() {
   const text = msg.value.trim();
   if (!text) return;
   msg.value = "";
 
   addUserMessage(text);
 
-  setTimeout(() => {
-    const reply = UltraBrain(text);
-    addAIMessage(reply);
-  }, 300);
+  const reply = await UltraBrain(text);
+  addAIMessage(reply);
 }
 
 document.getElementById("send").onclick = runAI;
 msg.onkeydown = e => (e.key === "Enter" ? runAI() : null);
 
 /* ---------- Welcome message ---------- */
-addAIMessage(`Welcome ${userName}. I'm CatGptV1. Ask me anything, including geometry questions.`);
+addAIMessage("Welcome! I am CatGPT V2 — now connected online. Ask me anything!");
 </script>
 
 </body>
