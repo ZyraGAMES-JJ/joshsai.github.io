@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>CatGPT V2 (Online)</title>
+<title>CatGPT V3</title>
 
 <style>
 body {
@@ -11,9 +11,9 @@ body {
   background: #0d1117;
   color: white;
   font-family: Arial, sans-serif;
-  height: 100vh;
   display: flex;
   flex-direction: column;
+  height: 100vh;
 }
 
 #topbar {
@@ -21,7 +21,7 @@ body {
   padding: 10px 20px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
   border-bottom: 1px solid #30363d;
 }
 
@@ -37,11 +37,19 @@ body {
   font-weight: bold;
 }
 
+#settings-btn {
+  background: #3a3f50;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
 #chat-container {
   flex: 1;
   display: flex;
   flex-direction: column;
-  height: 100vh;
 }
 
 #chat {
@@ -55,6 +63,7 @@ body {
   padding: 12px 16px;
   margin-bottom: 12px;
   border-radius: 10px;
+  line-height: 1.4;
 }
 
 .you {
@@ -93,13 +102,47 @@ body {
   border-radius: 6px;
   cursor: pointer;
 }
+
+/* Settings Panel */
+#settings-panel {
+  position: fixed;
+  top: 50px;
+  right: 20px;
+  background: #161b22;
+  border: 1px solid #30363d;
+  padding: 20px;
+  border-radius: 10px;
+  display: none;
+  z-index: 999;
+}
+
+#settings-panel input {
+  width: 100%;
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid #30363d;
+  background: #0d1117;
+  color: white;
+  margin-bottom: 10px;
+}
+
+#settings-panel button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  background: #3a7bff;
+  color: white;
+  cursor: pointer;
+  width: 100%;
+}
 </style>
 </head>
 <body>
 
 <div id="topbar">
   <div id="logo"></div>
-  <div id="title">CatGPT V2</div>
+  <div id="title">CatGPT V3</div>
+  <button id="settings-btn">Settings</button>
 </div>
 
 <div id="chat-container">
@@ -111,88 +154,38 @@ body {
   </div>
 </div>
 
+<div id="settings-panel">
+  <h3>Settings</h3>
+  <input type="password" id="api-key" placeholder="Enter your Groq API key">
+  <button id="save-key">Save Key</button>
+</div>
+
 <script>
-/* =====================================================
-    ONLINE MODE — FETCH REAL ANSWERS
-===================================================== */
-
-async function onlineKnowledge(query) {
-  const encoded = encodeURIComponent(query);
-
-  // Using AllOrigins to bypass CORS for GitHub Pages
-  const url = `https://api.allorigins.win/raw?url=https://en.wikipedia.org/api/rest_v1/page/summary/${encoded}`;
-
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-
-    const data = await res.json();
-    if (data.extract) return data.extract;
-
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-
-/* ---------- Math Solver ---------- */
-function solveMath(input) {
-  let q = input.toLowerCase();
-  q = q.replace(/multiplied by|times|x/g, "*");
-  q = q.replace(/plus/g, "+");
-  q = q.replace(/minus/g, "-");
-  q = q.replace(/divided by|over/g, "/");
-
-  const match = q.match(/[0-9\.\s\+\-\*\/\(\)]+/g);
-  if (!match) return null;
-
-  try {
-    let result = eval(match[0]);
-    if (!isNaN(result)) return result;
-  } catch {}
-
-  return null;
-}
-
-
-/* ---------- Main Brain ---------- */
-async function UltraBrain(input) {
-  let lower = input.toLowerCase();
-
-  // Math
-  const math = solveMath(input);
-  if (math !== null) return `The answer is: ${math}`;
-
-  // Online Knowledge (Wikipedia)
-  const wiki = await onlineKnowledge(input);
-  if (wiki) return wiki;
-
-  return `I don't fully know, but here's what I understand from your question: ${input}`;
-}
-
-
-/* ---------- Typing Animation ---------- */
-function typeMessage(div, text, speed = 20) {
-  let i = 0;
-  function t() {
-    if (i < text.length) {
-      div.textContent += text.charAt(i);
-      i++;
-      setTimeout(t, speed);
-    }
-  }
-  t();
-}
-
-
-/* =====================================================
-    CHAT SYSTEM
-===================================================== */
-
+let groqKey = "";
 const chat = document.getElementById("chat");
 const msg = document.getElementById("msg");
+const settingsBtn = document.getElementById("settings-btn");
+const settingsPanel = document.getElementById("settings-panel");
+const saveKeyBtn = document.getElementById("save-key");
+const apiInput = document.getElementById("api-key");
 
+// Toggle settings panel
+settingsBtn.onclick = () => {
+  settingsPanel.style.display = settingsPanel.style.display === "none" ? "block" : "none";
+};
+
+// Save API key (in RAM only)
+saveKeyBtn.onclick = () => {
+  groqKey = apiInput.value.trim();
+  if(groqKey) {
+    alert("API key saved! CatGPT is ready.");
+    settingsPanel.style.display = "none";
+  } else {
+    alert("Please enter a valid API key.");
+  }
+};
+
+// Add messages
 function addUserMessage(text) {
   const div = document.createElement("div");
   div.className = "message you";
@@ -209,13 +202,90 @@ function addAIMessage(text) {
   chat.scrollTop = chat.scrollHeight;
 }
 
-async function runAI() {
+// Typing animation
+function typeMessage(div, text, speed=20){
+  let i=0;
+  function t() {
+    if(i<text.length){
+      div.textContent += text.charAt(i);
+      i++;
+      setTimeout(t,speed);
+    }
+  }
+  t();
+}
+
+// Solve simple math
+function solveMath(input){
+  let q = input.toLowerCase();
+  q = q.replace(/multiplied by|times|x/g,"*");
+  q = q.replace(/plus/g,"+");
+  q = q.replace(/minus/g,"-");
+  q = q.replace(/divided by|over/g,"/");
+  const match = q.match(/[0-9\.\s\+\-\*\/\(\)]+/g);
+  if(!match) return null;
+  try{
+    let result = eval(match[0]);
+    if(!isNaN(result)) return result;
+  }catch{}
+  return null;
+}
+
+// Fetch Wikipedia summary
+async function fetchWiki(query){
+  const encoded = encodeURIComponent(query);
+  try{
+    const res = await fetch(`https://api.allorigins.win/raw?url=https://en.wikipedia.org/api/rest_v1/page/summary/${encoded}`);
+    if(!res.ok) return null;
+    const data = await res.json();
+    if(data.extract) return data.extract;
+    return null;
+  }catch{
+    return null;
+  }
+}
+
+// Fetch Groq LLM
+async function fetchGroqLLM(prompt){
+  if(!groqKey) return "Please enter your Groq API key in Settings.";
+  try{
+    const response = await fetch("https://api.groq.ai/v1/engines/llama-3-70b/completions",{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "Authorization":"Bearer "+groqKey
+      },
+      body: JSON.stringify({
+        prompt: prompt,
+        max_tokens: 300
+      })
+    });
+    const data = await response.json();
+    if(data && data.choices && data.choices[0].text){
+      return data.choices[0].text;
+    }
+    return "Groq API did not return a valid response.";
+  }catch(err){
+    return "Error contacting Groq API: "+err.message;
+  }
+}
+
+// UltraBrain — combines math, Wikipedia, Groq
+async function UltraBrain(input){
+  const math = solveMath(input);
+  if(math !== null) return `The answer is: ${math}`;
+  const wiki = await fetchWiki(input);
+  if(wiki) return wiki;
+  const groq = await fetchGroqLLM(input);
+  return groq;
+}
+
+// Send message
+async function runAI(){
   const text = msg.value.trim();
-  if (!text) return;
+  if(!text) return;
   msg.value = "";
-
   addUserMessage(text);
-
   const reply = await UltraBrain(text);
   addAIMessage(reply);
 }
@@ -223,9 +293,8 @@ async function runAI() {
 document.getElementById("send").onclick = runAI;
 msg.onkeydown = e => (e.key === "Enter" ? runAI() : null);
 
-/* ---------- Welcome message ---------- */
-addAIMessage("Welcome! I am CatGPT V2 — now connected online. Ask me anything!");
+// Welcome message
+addAIMessage("Welcome! CatGPT V3 is online. Go to Settings to enter your Groq API key and start asking questions!");
 </script>
-
 </body>
 </html>
